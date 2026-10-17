@@ -1,0 +1,361 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>恋人に着せたいハロウィン仮装診断</title>
+<style>
+:root {
+  --bg: #17121f;
+  --panel: #251d31;
+  --accent: #f6a6c9;
+  --gold: #f4c978;
+  --text: #fff5fc;
+  --muted: #c8b9d1;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(ellipse at top, #3a2449, var(--bg) 65%);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN",
+    "Yu Gothic", sans-serif;
+  line-height: 1.7;
+}
+main { width: min(680px, 100%); margin: auto; padding: 24px 18px 48px; }
+header { text-align: center; padding: 25px 0 20px; }
+.eyebrow { color: var(--gold); letter-spacing: .18em; font-size: .8rem; }
+h1 { font-size: clamp(1.7rem, 6vw, 2.5rem); line-height: 1.4; margin: 12px 0; }
+h1 span { color: var(--accent); }
+.subtitle { color: var(--muted); font-size: .95rem; }
+.panel {
+  background: rgba(37,29,49,.94);
+  border: 1px solid #594263;
+  border-radius: 22px;
+  padding: clamp(20px, 5vw, 34px);
+  box-shadow: 0 15px 50px #0003;
+}
+.progress-row { display: flex; justify-content: space-between; color: var(--muted); font-size: .85rem; }
+.track { height: 7px; background: #45334e; border-radius: 10px; margin: 12px 0 26px; overflow: hidden; }
+#bar { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--gold)); transition: width .25s; }
+h2 { font-size: 1.25rem; margin: 0 0 20px; }
+.options { display: grid; gap: 12px; }
+.option {
+  display: block; width: 100%; text-align: left;
+  padding: 16px 18px; border-radius: 14px;
+  background: #30253d; color: var(--text);
+  border: 1px solid #594767; cursor: pointer;
+  font: inherit; transition: .15s;
+}
+.option:hover, .option:focus-visible {
+  border-color: var(--accent); background: #49334f;
+  transform: translateY(-1px); outline: none;
+}
+.option:focus-visible, .primary:focus-visible, .secondary:focus-visible {
+  outline: 2px solid var(--gold); outline-offset: 3px;
+}
+.controls { display: flex; gap: 12px; margin-top: 24px; }
+button.primary, button.secondary {
+  padding: 12px 18px; border-radius: 999px; font: inherit;
+  font-weight: 700; cursor: pointer;
+}
+.primary { background: var(--accent); color: #291627; border: 0; }
+.secondary { background: transparent; color: var(--text); border: 1px solid #776482; }
+button:disabled { opacity: .35; cursor: not-allowed; }
+#result { text-align: center; }
+.result-icon { font-size: 4rem; line-height: 1.3; }
+.result-label { color: var(--gold); letter-spacing: .12em; font-size: .8rem; }
+.result-name { font-size: clamp(1.8rem, 7vw, 2.6rem); margin: 8px 0; color: var(--accent); }
+.result-desc { color: var(--muted); }
+.result-reason { background: #32243d; padding: 18px; border-radius: 14px; text-align: left; margin: 22px 0; }
+.alternatives { text-align: left; }
+.alternatives li { margin: 8px 0; }
+.hidden { display: none !important; }
+footer { text-align: center; color: var(--muted); font-size: .8rem; padding: 22px 0; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; }
+}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">HALLOWEEN SPECIAL</div>
+    <h1>恋人に着せたい♡<br><span>ハロウィン仮装診断</span></h1>
+    <p class="subtitle">20の質問で、あなたの理想の仮装を見つけよう。</p>
+  </header>
+
+  <section id="quiz" class="panel">
+    <div class="progress-row">
+      <span id="count">QUESTION 01 / 20</span>
+      <span id="percent">5%</span>
+    </div>
+    <div class="track"><div id="bar"></div></div>
+    <h2 id="question"></h2>
+    <div id="options" class="options"></div>
+    <div class="controls">
+      <button id="back" class="secondary" disabled>← 前の質問</button>
+      <button id="next" class="primary" disabled>次へ →</button>
+    </div>
+  </section>
+
+  <section id="result" class="panel hidden" aria-live="polite">
+    <div class="result-icon" id="resultIcon"></div>
+    <div class="result-label">YOUR IDEAL COSTUME</div>
+    <h2 class="result-name" id="resultName"></h2>
+    <p class="result-desc" id="resultDesc"></p>
+    <div class="result-reason">
+      <strong>♡ この仮装を選んだ理由</strong>
+      <p id="reason"></p>
+    </div>
+    <div class="alternatives">
+      <strong>ほかにも似合いそうな仮装</strong>
+      <ol id="alternatives"></ol>
+    </div>
+    <div class="controls">
+      <button id="restart" class="primary">もう一度診断する ↻</button>
+    </div>
+  </section>
+
+  <footer>あなたの「好き」が、恋人の仮装になる。</footer>
+</main>
+
+<script>
+// 30種類の仮装データ
+const costumes = [
+  ["vampire","🧛","吸血鬼","気高くミステリアス。黒いマントと赤い差し色が魅力。"],
+  ["cat","🐈‍⬛","黒猫","気まぐれで愛らしい。耳としっぽが似合う王道スタイル。"],
+  ["witch","🧙","魔女","魔法のように美しく、自由で幻想的な雰囲気。"],
+  ["demon","😈","小悪魔","挑発的でいたずらっぽい、ちょっと危険な魅力。"],
+  ["angel","😇","天使","純白で清楚。思わず守りたくなる神秘的な姿。"],
+  ["fallen","🖤","堕天使","白と黒の対比が美しい、退廃的で儚い存在感。"],
+  ["devil","🔥","悪魔","角や翼が映える、強くて大胆なスタイル。"],
+  ["ghost","👻","ゴースト","儚くて不思議。シンプルなのに印象に残る姿。"],
+  ["skeleton","💀","スケルトン","クールで個性的。骨モチーフのスタイリッシュな仮装。"],
+  ["mummy","🩹","ミイラ","包帯を巻いた、ちょっぴり不気味でユニークな姿。"],
+  ["zombie","🧟","ゾンビ","ホラー好きにはたまらない、本格的な恐怖演出。"],
+  ["frankenstein","⚡","フランケンシュタイン","無骨で存在感抜群。怪物らしさを楽しむ仮装。"],
+  ["werewolf","🐺","狼男","野性的で頼もしい、獣のような魅力。"],
+  ["pirate","🏴‍☠️","海賊","冒険心とワイルドさが光る、自由なスタイル。"],
+  ["detective","🕵️","探偵","知的で落ち着いた、大人っぽいミステリアスさ。"],
+  ["police","🚔","警察官","凛々しくて頼もしい、制服の魅力が際立つ姿。"],
+  ["nurse","🩺","ナース","清潔感とかわいさが同居する、印象的な制服姿。"],
+  ["maid","🫖","メイド","クラシカルでかわいい。フリルやエプロンが魅力。"],
+  ["butler","🎩","執事","上品でスマート。きちんとした装いが映える姿。"],
+  ["royal","👑","王子・王女","華やかで気品あふれる、物語の主人公のような姿。"],
+  ["knight","🛡️","騎士","凛々しく勇敢。守ってくれそうな格好よさ。"],
+  ["samurai","⚔️","侍","和の美しさと凛とした強さを感じさせる仮装。"],
+  ["ninja","🥷","忍者","身軽でクール。秘密めいた雰囲気が魅力。"],
+  ["idol","🎤","アイドル","華やかでキラキラ。ステージ映えする衣装。"],
+  ["rockstar","🎸","ロックスター","黒革やアクセサリーが似合う、反骨的な魅力。"],
+  ["school","🎒","学生風","青春らしく親しみやすい、制服モチーフの姿。"],
+  ["artist","🎨","芸術家","個性的で自由。ベレー帽などを使ったおしゃれな仮装。"],
+  ["fairy","🧚","妖精","軽やかで幻想的。羽やきらめきがよく似合う。"],
+  ["succubus","🌙","夢魔","妖艶で幻想的。大人びたダークファンタジーの魅力。"],
+  ["cyber","🤖","サイバー系","未来的で近未来ファッションのような個性派スタイル。"]
+].map(([id, icon, name, desc]) => ({id, icon, name, desc}));
+
+// 20問。各選択肢は関連する仮装にポイントを加算する。
+// 質問や選択肢、ポイント配分は自由に変更できる。
+const questions = [
+ {q:"Q1. どんな雰囲気の恋人に惹かれる？", a:[
+  ["ミステリアスで色気がある",["vampire","fallen","succubus"]],
+  ["かわいくて愛らしい",["cat","fairy","maid"]],
+  ["凛々しくて頼もしい",["knight","police","samurai"]],
+  ["個性的で目を引く",["cyber","rockstar","idol"]]]},
+ {q:"Q2. 好きな色の組み合わせは？", a:[
+  ["黒×赤",["vampire","devil","succubus"]],
+  ["黒×紫",["witch","fallen","cat"]],
+  ["白×金",["angel","royal","knight"]],
+  ["ネオンカラー",["cyber","idol","rockstar"]]]},
+ {q:"Q3. 仮装の露出度はどのくらいが好み？", a:[
+  ["控えめで上品",["butler","royal","detective"]],
+  ["かわいさ重視",["cat","maid","fairy"]],
+  ["少し大胆で華やか",["demon","succubus","devil"]],
+  ["衣装のデザイン次第",["witch","vampire","cyber"]]]},
+ {q:"Q4. どんな物語の世界にいてほしい？", a:[
+  ["ゴシックホラー",["vampire","ghost","fallen"]],
+  ["魔法とファンタジー",["witch","fairy","royal"]],
+  ["冒険と戦い",["pirate","knight","ninja"]],
+  ["近未来のSF",["cyber","skeleton","frankenstein"]]]},
+ {q:"Q5. 恋人にしてほしい表情は？", a:[
+  ["余裕のある微笑み",["vampire","butler","detective"]],
+  ["無邪気な笑顔",["cat","idol","fairy"]],
+  ["鋭く真剣な眼差し",["knight","ninja","police"]],
+  ["いたずらっぽい笑み",["demon","devil","succubus"]]]},
+ {q:"Q6. いちばん見たい小物は？", a:[
+  ["マントや大きな襟",["vampire","royal","fallen"]],
+  ["耳やしっぽ、羽",["cat","werewolf","fairy"]],
+  ["剣や武器の小道具",["knight","samurai","pirate"]],
+  ["帽子や眼鏡、機械装飾",["detective","artist","cyber"]]]},
+ {q:"Q7. どんなギャップが好き？", a:[
+  ["普段は優しいのに闇がある",["fallen","vampire","ghost"]],
+  ["普段はクールなのにかわいい",["cat","ninja","butler"]],
+  ["普段はおとなしいのに大胆",["demon","rockstar","succubus"]],
+  ["普段から華やかで堂々",["royal","idol","angel"]]]},
+ {q:"Q8. ハロウィンの舞台を選ぶなら？", a:[
+  ["古い洋館",["vampire","ghost","witch"]],
+  ["不思議な森",["fairy","werewolf","witch"]],
+  ["夜の街やライブ会場",["rockstar","cyber","idol"]],
+  ["城や歴史ある建物",["royal","knight","butler"]]]},
+ {q:"Q9. 好きな衣装のシルエットは？", a:[
+  ["長いマントやローブ",["vampire","witch","fallen"]],
+  ["ふんわりしたスカート",["maid","fairy","royal"]],
+  ["ぴったりした機能的な服",["ninja","police","cyber"]],
+  ["ジャケットやスーツ",["butler","detective","rockstar"]]]},
+ {q:"Q10. どのくらい本格的な仮装がいい？", a:[
+  ["リアルで本格派",["zombie","mummy","frankenstein"]],
+  ["美しさを重視",["angel","royal","vampire"]],
+  ["かわいく気軽に",["cat","school","maid"]],
+  ["造形やメイクにこだわる",["skeleton","cyber","succubus"]]]},
+ {q:"Q11. 恋人に似合う役柄は？", a:[
+  ["夜を支配する存在",["vampire","devil","succubus"]],
+  ["人を癒やす存在",["angel","nurse","fairy"]],
+  ["謎を解く存在",["detective","witch","ninja"]],
+  ["みんなを魅了する存在",["idol","royal","rockstar"]]]},
+ {q:"Q12. どんな素材が好き？", a:[
+  ["ベルベットやレース",["vampire","witch","maid"]],
+  ["革や金属",["rockstar","knight","cyber"]],
+  ["白い布や透け感のある素材",["ghost","angel","fairy"]],
+  ["制服風のしっかりした生地",["police","school","butler"]]]},
+ {q:"Q13. どんなメイクを見たい？", a:[
+  ["赤い唇や鋭い目元",["vampire","succubus","devil"]],
+  ["きらきらした目元",["fairy","idol","angel"]],
+  ["傷や不気味な特殊メイク",["zombie","skeleton","frankenstein"]],
+  ["ナチュラルで知的",["detective","butler","artist"]]]},
+ {q:"Q14. 恋人のどこを引き立てたい？", a:[
+  ["目元や顔立ち",["vampire","detective","fallen"]],
+  ["スタイルや全身のシルエット",["royal","knight","rockstar"]],
+  ["かわいい仕草",["cat","maid","school"]],
+  ["個性的なセンス",["artist","cyber","witch"]]]},
+ {q:"Q15. どんな関係性を演じてみたい？", a:[
+  ["主人と忠実な従者",["royal","butler","maid"]],
+  ["騎士と守られる人",["knight","angel","royal"]],
+  ["宿敵同士",["vampire","werewolf","fallen"]],
+  ["秘密を共有する相棒",["detective","ninja","pirate"]]]},
+ {q:"Q16. かわいさと格好よさ、どっち？", a:[
+  ["かわいさ全振り",["cat","fairy","maid"]],
+  ["格好よさ全振り",["knight","samurai","rockstar"]],
+  ["美しさと気品",["angel","royal","vampire"]],
+  ["怪しさと危うさ",["demon","succubus","fallen"]]]},
+ {q:"Q17. どんな写真を撮りたい？", a:[
+  ["映画のワンシーン風",["vampire","royal","pirate"]],
+  ["かわいい記念写真",["cat","maid","school"]],
+  ["迫力のあるアクション風",["ninja","knight","werewolf"]],
+  ["アート作品のような写真",["cyber","ghost","artist"]]]},
+ {q:"Q18. どんな性格のキャラクターが好き？", a:[
+  ["知的で策略家",["witch","detective","vampire"]],
+  ["優しくて純粋",["angel","nurse","fairy"]],
+  ["自由で反骨精神がある",["pirate","rockstar","ninja"]],
+  ["自信家でカリスマ性がある",["devil","royal","idol"]]]},
+ {q:"Q19. 仮装に求める一番の魅力は？", a:[
+  ["色気",["vampire","succubus","demon"]],
+  ["癒やし",["angel","cat","nurse"]],
+  ["強さ",["knight","samurai","werewolf"]],
+  ["意外性",["ghost","cyber","frankenstein"]]]},
+ {q:"Q20. 最後に、恋人に一番伝えたいことは？", a:[
+  ["美しくて見惚れてしまう",["royal","angel","vampire"]],
+  ["かわいくてずっと見ていたい",["cat","fairy","maid"]],
+  ["格好よくて頼りになる",["knight","butler","samurai"]],
+  ["危険なくらい魅力的",["succubus","fallen","devil"]]]}
+];
+
+const $ = id => document.getElementById(id);
+let current = 0;
+let answers = Array(questions.length).fill(null);
+
+function renderQuestion() {
+  const q = questions[current];
+  const n = current + 1;
+  $("count").textContent = `QUESTION ${String(n).padStart(2,"0")} / ${questions.length}`;
+  $("percent").textContent = `${Math.round(n / questions.length * 100)}%`;
+  $("bar").style.width = `${n / questions.length * 100}%`;
+  $("question").textContent = q.q;
+  $("options").replaceChildren();
+
+  q.a.forEach((option, i) => {
+    const button = document.createElement("button");
+    button.className = "option";
+    button.type = "button";
+    button.textContent = `${answers[current] === i ? "♥ " : "♡ "}${option[0]}`;
+    button.setAttribute("aria-pressed", String(answers[current] === i));
+    if (answers[current] === i) {
+      button.style.borderColor = "var(--accent)";
+      button.style.background = "#49334f";
+    }
+    button.addEventListener("click", () => {
+      answers[current] = i;
+      renderQuestion();
+    });
+    $("options").append(button);
+  });
+
+  $("back").disabled = current === 0;
+  $("next").disabled = answers[current] === null;
+  $("next").textContent = current === questions.length - 1 ? "結果を見る ♡" : "次へ →";
+}
+
+function showResult() {
+  const scores = Object.fromEntries(costumes.map(c => [c.id, 0]));
+
+  answers.forEach((answer, qi) => {
+    const keys = questions[qi].a[answer][1];
+    // 先頭の候補を少し重視しつつ、複数の好みも反映する
+    keys.forEach((key, i) => scores[key] += i === 0 ? 3 : 1);
+  });
+
+  const ranked = [...costumes].sort((a, b) =>
+    scores[b.id] - scores[a.id] || a.name.localeCompare(b.name, "ja")
+  );
+  const winner = ranked[0];
+
+  $("quiz").classList.add("hidden");
+  $("result").classList.remove("hidden");
+  $("resultIcon").textContent = winner.icon;
+  $("resultName").textContent = winner.name;
+  $("resultDesc").textContent = winner.desc;
+
+  const matched = answers.reduce((total, answer, qi) => {
+    return total + (questions[qi].a[answer][1].includes(winner.id) ? 1 : 0);
+  }, 0);
+  $("reason").textContent =
+    `あなたの回答から「${winner.name}」が最も高い相性になりました。` +
+    `このジャンルにつながる選択は${matched}問。` +
+    `${winner.desc} ぜひ恋人に提案してみて！`;
+
+  $("alternatives").replaceChildren();
+  ranked.slice(1, 4).forEach(c => {
+    const li = document.createElement("li");
+    li.textContent = `${c.icon} ${c.name} — ${c.desc}`;
+    $("alternatives").append(li);
+  });
+  window.scrollTo({top: 0, behavior: "smooth"});
+}
+
+$("back").addEventListener("click", () => {
+  if (current > 0) { current--; renderQuestion(); }
+});
+$("next").addEventListener("click", () => {
+  if (answers[current] === null) return;
+  if (current < questions.length - 1) {
+    current++;
+    renderQuestion();
+  } else {
+    showResult();
+  }
+});
+$("restart").addEventListener("click", () => {
+  current = 0;
+  answers = Array(questions.length).fill(null);
+  $("result").classList.add("hidden");
+  $("quiz").classList.remove("hidden");
+  renderQuestion();
+  window.scrollTo({top: 0, behavior: "smooth"});
+});
+
+renderQuestion();
+</script>
+</body>
+</html>
